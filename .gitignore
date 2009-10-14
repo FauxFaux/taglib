@@ -1,0 +1,16 @@
+CMakeCache.txt
+CMakeFiles
+Makefile
+*.cmake
+*.pdb
+*.exp
+*.manifest
+*.res
+config.h
+*.lib
+*.resource.txt
+*.pc
+*.ilk
+*.dll
+taglib-config
+taglib_config.h
