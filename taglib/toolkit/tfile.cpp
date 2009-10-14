@@ -67,25 +67,90 @@ struct FileNameHandle : public std::string
 
 class File::FilePrivate
 {
+protected:
+	FilePrivate() : size(0), valid(true) {}
 public:
-  FilePrivate(FileName fileName);
+  virtual ~FilePrivate()
+  {
+  }
 
-  FILE *file;
+  virtual bool isOpen() = 0;
+  virtual size_t fread(void *dst, size_t element_size, size_t count) = 0;
+  virtual size_t fwrite(const void *s, size_t siz, size_t count) = 0;
+  virtual int fseek(long offset, int origin) = 0;
+  virtual void clearError() = 0;
+  virtual long tell() = 0;
+  virtual int truncate(long size) = 0;
+  virtual FileNameHandle name() = 0;
+  virtual bool readOnly() = 0;
 
-  FileNameHandle name;
-
-  bool readOnly;
-  bool valid;
+// Unlike the above, this is used purely for caching.
   ulong size;
+  bool valid;
+
   static const uint bufferSize = 1024;
 };
 
-File::FilePrivate::FilePrivate(FileName fileName) :
+class File::FSFilePrivate : public File::FilePrivate
+{
+private:
+  FILE *file;
+  FileName name_;
+  bool readOnly_;
+public:
+  FSFilePrivate(FileName fn);
+
+  ~FSFilePrivate()
+	{
+		if (file)
+			fclose(file);
+	}
+	
+  bool isOpen() { return file == 0; }
+
+  size_t fread(void *dst, size_t element_size, size_t count)
+  {
+    return ::fread(dst, element_size, count, file);
+  }
+
+  size_t fwrite(const void *s, size_t siz, size_t count)
+  {
+    return ::fwrite(s, siz, count, file);
+  }
+  int fseek(long offset, int origin)
+  {
+	return ::fseek(file, offset, origin);
+  }
+  void clearError()
+  {
+    clearerr(file);
+  }
+
+  long tell()
+  {
+    return ftell(file);
+  }
+
+  int truncate(long size)
+  {
+	return ftruncate(_fileno(file), size);
+  }
+
+  FileNameHandle name()
+  {
+    return name_;
+  }
+
+  bool readOnly()
+  {
+    return readOnly_;
+  }
+};
+
+File::FSFilePrivate::FSFilePrivate(FileName fileName) :
   file(0),
-  name(fileName),
-  readOnly(true),
-  valid(true),
-  size(0)
+  name_(fileName),
+  readOnly_(true)
 {
   // First try with read / write mode, if that fails, fall back to read only.
 
@@ -93,12 +158,12 @@ File::FilePrivate::FilePrivate(FileName fileName) :
 
   if(wcslen((const wchar_t *) fileName) > 0) {
 
-    file = _wfopen(name, L"rb+");
+    file = _wfopen(name(), L"rb+");
 
     if(file)
-      readOnly = false;
+      readOnly_ = false;
     else
-      file = _wfopen(name, L"rb");
+      file = _wfopen(name(), L"rb");
 
     if(file)
       return;
@@ -107,15 +172,15 @@ File::FilePrivate::FilePrivate(FileName fileName) :
 
 #endif
 
-  file = fopen(name, "rb+");
+  file = fopen(name(), "rb+");
 
   if(file)
-    readOnly = false;
+    readOnly_ = false;
   else
-    file = fopen(name, "rb");
+    file = fopen(name(), "rb");
 
   if(!file)
-    debug("Could not open file " + String((const char *) name));
+    debug("Could not open file " + String((const char *) name()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,24 +189,22 @@ File::FilePrivate::FilePrivate(FileName fileName) :
 
 File::File(FileName file)
 {
-  d = new FilePrivate(file);
+  d = new FSFilePrivate(file);
 }
 
 File::~File()
 {
-  if(d->file)
-    fclose(d->file);
   delete d;
 }
 
 FileName File::name() const
 {
-  return d->name;
+  return d->name();
 }
 
 ByteVector File::readBlock(ulong length)
 {
-  if(!d->file) {
+  if(!d->isOpen()) {
     debug("File::readBlock() -- Invalid File");
     return ByteVector::null;
   }
@@ -156,27 +219,27 @@ ByteVector File::readBlock(ulong length)
   }
 
   ByteVector v(static_cast<uint>(length));
-  const int count = fread(v.data(), sizeof(char), length, d->file);
+  const int count = d->fread(v.data(), sizeof(char), length);
   v.resize(count);
   return v;
 }
 
 void File::writeBlock(const ByteVector &data)
 {
-  if(!d->file)
+  if(!d->isOpen())
     return;
 
-  if(d->readOnly) {
+  if(d->readOnly()) {
     debug("File::writeBlock() -- attempted to write to a file that is not writable");
     return;
   }
 
-  fwrite(data.data(), sizeof(char), data.size(), d->file);
+  d->fwrite(data.data(), sizeof(char), data.size());
 }
 
 long File::find(const ByteVector &pattern, long fromOffset, const ByteVector &before)
 {
-  if(!d->file || pattern.size() > d->bufferSize)
+  if(!d->isOpen() || pattern.size() > d->bufferSize)
       return -1;
 
   // The position in the file that the current buffer starts at.
@@ -272,7 +335,7 @@ long File::find(const ByteVector &pattern, long fromOffset, const ByteVector &be
 
 long File::rfind(const ByteVector &pattern, long fromOffset, const ByteVector &before)
 {
-  if(!d->file || pattern.size() > d->bufferSize)
+  if(!d->isOpen() || pattern.size() > d->bufferSize)
       return -1;
 
   // The position in the file that the current buffer starts at.
@@ -340,7 +403,7 @@ long File::rfind(const ByteVector &pattern, long fromOffset, const ByteVector &b
 
 void File::insert(const ByteVector &data, ulong start, ulong replace)
 {
-  if(!d->file)
+  if(!d->isOpen())
     return;
 
   if(data.size() == replace) {
@@ -385,7 +448,7 @@ void File::insert(const ByteVector &data, ulong start, ulong replace)
   // That's a bit slower than using char *'s so, we're only doing it here.
 
   seek(readPosition);
-  int bytesRead = fread(aboutToOverwrite.data(), sizeof(char), bufferLength, d->file);
+  int bytesRead = d->fread(aboutToOverwrite.data(), sizeof(char), bufferLength);
   readPosition += bufferLength;
 
   seek(writePosition);
@@ -407,7 +470,7 @@ void File::insert(const ByteVector &data, ulong start, ulong replace)
     // to overwrite.  Appropriately increment the readPosition.
 
     seek(readPosition);
-    bytesRead = fread(aboutToOverwrite.data(), sizeof(char), bufferLength, d->file);
+    bytesRead = d->fread(aboutToOverwrite.data(), sizeof(char), bufferLength);
     aboutToOverwrite.resize(bytesRead);
     readPosition += bufferLength;
 
@@ -421,7 +484,7 @@ void File::insert(const ByteVector &data, ulong start, ulong replace)
     // writePosition.
 
     seek(writePosition);
-    fwrite(buffer.data(), sizeof(char), buffer.size(), d->file);
+    d->fwrite(buffer.data(), sizeof(char), buffer.size());
     writePosition += buffer.size();
 
     // Make the current buffer the data that we read in the beginning.
@@ -438,7 +501,7 @@ void File::insert(const ByteVector &data, ulong start, ulong replace)
 
 void File::removeBlock(ulong start, ulong length)
 {
-  if(!d->file)
+  if(!d->isOpen())
     return;
 
   ulong bufferLength = bufferSize();
@@ -452,7 +515,7 @@ void File::removeBlock(ulong start, ulong length)
 
   while(bytesRead != 0) {
     seek(readPosition);
-    bytesRead = fread(buffer.data(), sizeof(char), bufferLength, d->file);
+    bytesRead = d->fread(buffer.data(), sizeof(char), bufferLength);
     readPosition += bytesRead;
 
     // Check to see if we just read the last block.  We need to call clear()
@@ -462,7 +525,7 @@ void File::removeBlock(ulong start, ulong length)
       clear();
 
     seek(writePosition);
-    fwrite(buffer.data(), sizeof(char), bytesRead, d->file);
+    d->fwrite(buffer.data(), sizeof(char), bytesRead);
     writePosition += bytesRead;
   }
   truncate(writePosition);
@@ -470,7 +533,7 @@ void File::removeBlock(ulong start, ulong length)
 
 bool File::readOnly() const
 {
-  return d->readOnly;
+  return d->readOnly();
 }
 
 bool File::isReadable(const char *file)
@@ -480,7 +543,7 @@ bool File::isReadable(const char *file)
 
 bool File::isOpen() const
 {
-  return (d->file != NULL);
+  return d->isOpen();
 }
 
 bool File::isValid() const
@@ -490,32 +553,32 @@ bool File::isValid() const
 
 void File::seek(long offset, Position p)
 {
-  if(!d->file) {
+  if(!d->isOpen()) {
     debug("File::seek() -- trying to seek in a file that isn't opened.");
     return;
   }
 
   switch(p) {
   case Beginning:
-    fseek(d->file, offset, SEEK_SET);
+    d->fseek(offset, SEEK_SET);
     break;
   case Current:
-    fseek(d->file, offset, SEEK_CUR);
+    d->fseek(offset, SEEK_CUR);
     break;
   case End:
-    fseek(d->file, offset, SEEK_END);
+    d->fseek(offset, SEEK_END);
     break;
   }
 }
 
 void File::clear()
 {
-  clearerr(d->file);
+  d->clearError();
 }
 
 long File::tell() const
 {
-  return ftell(d->file);
+  return d->tell();
 }
 
 long File::length()
@@ -525,7 +588,7 @@ long File::length()
   if(d->size > 0)
     return d->size;
 
-  if(!d->file)
+  if(!d->isOpen())
     return 0;
 
   long curpos = tell();
@@ -555,7 +618,7 @@ void File::setValid(bool valid)
 
 void File::truncate(long length)
 {
-  ftruncate(fileno(d->file), length);
+  d->truncate(length);
 }
 
 TagLib::uint File::bufferSize()

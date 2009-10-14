@@ -262,6 +262,7 @@ namespace TagLib {
     File &operator=(const File &);
 
     class FilePrivate;
+	class FSFilePrivate;
     FilePrivate *d;
   };
 
