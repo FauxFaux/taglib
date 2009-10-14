@@ -66,13 +66,13 @@ List<const FileRef::FileTypeResolver *> FileRef::FileRefPrivate::fileTypeResolve
 
 FileRef::FileRef()
 {
-  d = new FileRefPrivate(0);
+    d = new FileRefPrivate(0);
 }
 
-FileRef::FileRef(FileName fileName, bool readAudioProperties,
+FileRef::FileRef(FileAccessor *fa, bool readAudioProperties,
                  AudioProperties::ReadStyle audioPropertiesStyle)
 {
-  d = new FileRefPrivate(create(fileName, readAudioProperties, audioPropertiesStyle));
+  d = new FileRefPrivate(create(fa, readAudioProperties, audioPropertiesStyle));
 }
 
 FileRef::FileRef(File *file)
@@ -176,14 +176,14 @@ bool FileRef::operator!=(const FileRef &ref) const
   return ref.d->file != d->file;
 }
 
-File *FileRef::create(FileName fileName, bool readAudioProperties,
+File *FileRef::create(FileAccessor *fa, bool readAudioProperties,
                       AudioProperties::ReadStyle audioPropertiesStyle) // static
 {
 
   List<const FileTypeResolver *>::ConstIterator it = FileRefPrivate::fileTypeResolvers.begin();
 
   for(; it != FileRefPrivate::fileTypeResolvers.end(); ++it) {
-    File *file = (*it)->createFile(fileName, readAudioProperties, audioPropertiesStyle);
+    File *file = (*it)->createFile(fa->name(), readAudioProperties, audioPropertiesStyle);
     if(file)
       return file;
   }
@@ -193,7 +193,7 @@ File *FileRef::create(FileName fileName, bool readAudioProperties,
   String s;
 
 #ifdef _WIN32
-  s = (wcslen((const wchar_t *) fileName) > 0) ? String((const wchar_t *) fileName) : String((const char *) fileName);
+  s = (wcslen((const wchar_t *) fa->name()) > 0) ? String((const wchar_t *) fa->name()) : String((const char *) fa->name());
 #else
   s = fileName;
 #endif
@@ -206,35 +206,35 @@ File *FileRef::create(FileName fileName, bool readAudioProperties,
   if(pos != -1) {
     String ext = s.substr(pos + 1).upper();
     if(ext == "OGG" || ext == "OGA")
-      return new Ogg::Vorbis::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new Ogg::Vorbis::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "MP3")
-      return new MPEG::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new MPEG::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "OGA")
-      return new Ogg::FLAC::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new Ogg::FLAC::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "FLAC")
-      return new FLAC::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new FLAC::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "MPC")
-      return new MPC::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new MPC::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "WV")
-      return new WavPack::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new WavPack::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "SPX")
-      return new Ogg::Speex::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new Ogg::Speex::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "TTA")
-      return new TrueAudio::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new TrueAudio::File(fa, readAudioProperties, audioPropertiesStyle);
 #ifdef TAGLIB_WITH_MP4
     if(ext == "M4A" || ext == "M4B" || ext == "M4P" || ext == "MP4" || ext == "3G2")
-      return new MP4::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new MP4::File(fa, readAudioProperties, audioPropertiesStyle);
 #endif
 #ifdef TAGLIB_WITH_ASF
     if(ext == "WMA" || ext == "ASF")
-      return new ASF::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new ASF::File(fa, readAudioProperties, audioPropertiesStyle);
 #endif
     if(ext == "AIF")
-      return new RIFF::AIFF::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new RIFF::AIFF::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "WAV")
-      return new RIFF::WAV::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new RIFF::WAV::File(fa, readAudioProperties, audioPropertiesStyle);
     if(ext == "AIFF")
-      return new RIFF::AIFF::File(fileName, readAudioProperties, audioPropertiesStyle);
+      return new RIFF::AIFF::File(fa, readAudioProperties, audioPropertiesStyle);
   }
 
   return 0;

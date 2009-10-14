@@ -208,7 +208,7 @@ bool Ogg::File::save()
 // protected members
 ////////////////////////////////////////////////////////////////////////////////
 
-Ogg::File::File(FileName file) : TagLib::File(file)
+Ogg::File::File(FileAccessor *fa) : TagLib::File(fa)
 {
   d = new FilePrivate;
 }

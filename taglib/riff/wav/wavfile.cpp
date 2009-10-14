@@ -55,8 +55,8 @@ public:
 // public members
 ////////////////////////////////////////////////////////////////////////////////
 
-RIFF::WAV::File::File(FileName file, bool readProperties,
-                       Properties::ReadStyle propertiesStyle) : RIFF::File(file, LittleEndian)
+RIFF::WAV::File::File(FileAccessor *fa, bool readProperties,
+                       Properties::ReadStyle propertiesStyle) : RIFF::File(fa, LittleEndian)
 {
   d = new FilePrivate;
   if(isOpen())

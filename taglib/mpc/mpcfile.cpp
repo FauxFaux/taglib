@@ -89,8 +89,8 @@ public:
 // public members
 ////////////////////////////////////////////////////////////////////////////////
 
-MPC::File::File(FileName file, bool readProperties,
-                Properties::ReadStyle propertiesStyle) : TagLib::File(file)
+MPC::File::File(FileAccessor *fa, bool readProperties,
+                Properties::ReadStyle propertiesStyle) : TagLib::File(fa)
 {
   d = new FilePrivate;
   read(readProperties, propertiesStyle);

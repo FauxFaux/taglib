@@ -93,9 +93,9 @@ public:
 // public members
 ////////////////////////////////////////////////////////////////////////////////
 
-FLAC::File::File(FileName file, bool readProperties,
+FLAC::File::File(FileAccessor *fa, bool readProperties,
                  Properties::ReadStyle propertiesStyle) :
-  TagLib::File(file)
+  TagLib::File(fa)
 {
   d = new FilePrivate;
   read(readProperties, propertiesStyle);

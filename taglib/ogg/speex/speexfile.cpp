@@ -58,8 +58,8 @@ public:
 // public members
 ////////////////////////////////////////////////////////////////////////////////
 
-Speex::File::File(FileName file, bool readProperties,
-                   Properties::ReadStyle propertiesStyle) : Ogg::File(file)
+Speex::File::File(FileAccessor *fa, bool readProperties,
+                   Properties::ReadStyle propertiesStyle) : Ogg::File(fa)
 {
   d = new FilePrivate;
   read(readProperties, propertiesStyle);

@@ -68,8 +68,8 @@ public:
 // public members
 ////////////////////////////////////////////////////////////////////////////////
 
-Ogg::FLAC::File::File(FileName file, bool readProperties,
-                      Properties::ReadStyle propertiesStyle) : Ogg::File(file)
+Ogg::FLAC::File::File(FileAccessor *fa, bool readProperties,
+                      Properties::ReadStyle propertiesStyle) : Ogg::File(fa)
 {
   d = new FilePrivate;
   read(readProperties, propertiesStyle);

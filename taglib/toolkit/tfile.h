@@ -48,9 +48,30 @@ namespace TagLib {
     std::string m_name;
     std::wstring m_wname;
   };
+  typedef FileName FileNameHandle;
 #else
   typedef const char *FileName;
+
+  struct FileNameHandle : public std::string
+  {
+    FileNameHandle(FileName name) : std::string(name) {}
+    operator FileName () const { return c_str(); }
+  };
 #endif
+
+  struct FileAccessor
+  {
+    virtual bool isOpen() const = 0;
+    virtual size_t fread(void *dst, size_t element_size, size_t count) const = 0;
+    virtual size_t fwrite(const void *s, size_t siz, size_t count) = 0;
+    virtual int fseek(long offset, int origin) = 0;
+    virtual void clearError() = 0;
+    virtual long tell() const = 0;
+    virtual int truncate(long size) = 0;
+    virtual FileNameHandle name() const = 0;
+    virtual bool readOnly() const = 0;
+    virtual ~FileAccessor() {};
+  };
 
   //! A file class with some useful methods for tag manipulation
 
@@ -239,6 +260,12 @@ namespace TagLib {
      * instantiated through subclasses.
      */
     File(FileName file);
+
+    /*!
+     * Construct a File object using the specified \a accessor.
+     */
+
+	File(FileAccessor *accessor);
 
     /*!
      * Marks the file as valid or invalid.

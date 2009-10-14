@@ -122,7 +122,7 @@ namespace TagLib {
      * Also see the note in the class documentation about why you may not want to
      * use this method in your application.
      */
-    explicit FileRef(FileName fileName,
+    explicit FileRef(FileAccessor *fa,
                      bool readAudioProperties = true,
                      AudioProperties::ReadStyle
                      audioPropertiesStyle = AudioProperties::Average);
@@ -245,7 +245,7 @@ namespace TagLib {
      *
      * \deprecated
      */
-    static File *create(FileName fileName,
+    static File *create(FileAccessor *fa,
                         bool readAudioProperties = true,
                         AudioProperties::ReadStyle audioPropertiesStyle = AudioProperties::Average);
 

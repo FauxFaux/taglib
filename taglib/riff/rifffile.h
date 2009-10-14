@@ -55,7 +55,7 @@ namespace TagLib {
 
       enum Endianness { BigEndian, LittleEndian };
 
-      File(FileName file, Endianness endianness);
+      File(FileAccessor *fa, Endianness endianness);
 
       /*!
        * \return The number of chunks in the file.

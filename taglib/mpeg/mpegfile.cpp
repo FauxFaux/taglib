@@ -94,8 +94,8 @@ public:
 // public members
 ////////////////////////////////////////////////////////////////////////////////
 
-MPEG::File::File(FileName file, bool readProperties,
-                 Properties::ReadStyle propertiesStyle) : TagLib::File(file)
+MPEG::File::File(FileAccessor *fa, bool readProperties,
+                 Properties::ReadStyle propertiesStyle) : TagLib::File(fa)
 {
   d = new FilePrivate;
 

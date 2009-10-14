@@ -24,6 +24,7 @@
 #endif
 
 #include "tag_c.h"
+#include "fileaccessor.h"
 
 #include <stdlib.h>
 #include <fileref.h>
@@ -64,11 +65,12 @@ void taglib_set_string_management_enabled(BOOL management)
 
 TagLib_File *taglib_file_new(const char *filename)
 {
-  return reinterpret_cast<TagLib_File *>(FileRef::create(filename));
+  return reinterpret_cast<TagLib_File *>(FileRef::create(new FSFileAccessor(filename)));
 }
 
-TagLib_File *taglib_file_new_type(const char *filename, TagLib_File_Type type)
+TagLib_File *taglib_file_new_type(const char *nameoffile, TagLib_File_Type type)
 {
+  FileAccessor *filename = new FSFileAccessor(nameoffile);
   switch(type) {
   case TagLib_File_MPEG:
     return reinterpret_cast<TagLib_File *>(new MPEG::File(filename));

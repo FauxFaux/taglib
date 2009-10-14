@@ -65,8 +65,8 @@ public:
   MP4::Properties *properties;
 };
 
-MP4::File::File(FileName file, bool readProperties, AudioProperties::ReadStyle audioPropertiesStyle)
-    : TagLib::File(file)
+MP4::File::File(FileAccessor *fa, bool readProperties, AudioProperties::ReadStyle audioPropertiesStyle)
+    : TagLib::File(fa)
 {
   d = new FilePrivate;
   read(readProperties, audioPropertiesStyle);

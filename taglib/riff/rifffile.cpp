@@ -65,7 +65,7 @@ RIFF::File::~File()
 // protected members
 ////////////////////////////////////////////////////////////////////////////////
 
-RIFF::File::File(FileName file, Endianness endianness) : TagLib::File(file)
+RIFF::File::File(FileAccessor *fa, Endianness endianness) : TagLib::File(fa)
 {
   d = new FilePrivate;
   d->endianness = endianness;
