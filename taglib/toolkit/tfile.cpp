@@ -26,6 +26,7 @@
 #include "tfile.h"
 #include "tstring.h"
 #include "tdebug.h"
+#include "fileaccessor.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -70,61 +71,53 @@ public:
   static const uint bufferSize = 1024;
 };
 
-class FSFileAccessor : public FileAccessor
+ FSFileAccessor::~FSFileAccessor()
 {
-private:
-  FILE *file;
-  FileName name_;
-  bool readOnly_;
-public:
-  FSFileAccessor(FileName fn);
+	if (file)
+		fclose(file);
+}
 
-  ~FSFileAccessor()
-	{
-		if (file)
-			fclose(file);
-	}
-	
-  bool isOpen() const { return file == 0; }
+bool FSFileAccessor::isOpen() const { return file == 0; }
 
-  size_t fread(void *dst, size_t element_size, size_t count) const
-  {
-    return ::fread(dst, element_size, count, file);
-  }
+size_t FSFileAccessor::fread(void *dst, size_t element_size, size_t count) const
+{
+	return ::fread(dst, element_size, count, file);
+}
 
-  size_t fwrite(const void *s, size_t siz, size_t count)
-  {
-    return ::fwrite(s, siz, count, file);
-  }
-  int fseek(long offset, int origin)
-  {
+size_t FSFileAccessor::fwrite(const void *s, size_t siz, size_t count)
+{
+	return ::fwrite(s, siz, count, file);
+}
+
+int FSFileAccessor::fseek(long offset, int origin)
+{
 	return ::fseek(file, offset, origin);
-  }
-  void clearError()
-  {
-    clearerr(file);
-  }
+}
 
-  long tell() const
-  {
-    return ftell(file);
-  }
+void FSFileAccessor::clearError()
+{
+	clearerr(file);
+}
 
-  int truncate(long size)
-  {
+long FSFileAccessor::tell() const
+{
+	return ftell(file);
+}
+
+int FSFileAccessor::truncate(long size)
+{
 	return ftruncate(_fileno(file), size);
-  }
+}
 
-  FileNameHandle name() const
-  {
-    return name_;
-  }
+FileNameHandle FSFileAccessor::name() const
+{
+	return name_;
+}
 
-  bool readOnly() const
-  {
-    return readOnly_;
-  }
-};
+bool FSFileAccessor::readOnly() const
+{
+	return readOnly_;
+}
 
 FSFileAccessor::FSFileAccessor(FileName fileName) :
   file(0),

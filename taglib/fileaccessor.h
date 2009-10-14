@@ -13,7 +13,7 @@ private:
 public:
   FSFileAccessor(FileName fn);
   ~FSFileAccessor();
-  bool isOpen() const { return file == 0; }
+  bool isOpen() const;
   size_t fread(void *dst, size_t element_size, size_t count) const;
   size_t fwrite(const void *s, size_t siz, size_t count);
   int fseek(long offset, int origin);
